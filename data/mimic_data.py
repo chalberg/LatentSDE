@@ -20,37 +20,37 @@ def query_raw_mimiciv(project):
     q = """
       with times as (
           select subject_id, hadm_id, charttime
-          from`physionet-data.mimic_derived.bg` bg
+          from`physionet-data.mimiciv_derived.bg` bg
           union distinct
           select subject_id, hadm_id, charttime
-          from `physionet-data.mimic_derived.blood_differential`
+          from `physionet-data.mimiciv_derived.blood_differential`
           union distinct
           select subject_id, hadm_id, charttime
-          from `physionet-data.mimic_derived.cardiac_marker`
+          from `physionet-data.mimiciv_derived.cardiac_marker`
           union distinct
           select subject_id, hadm_id, charttime
-          from `physionet-data.mimic_derived.chemistry`
+          from `physionet-data.mimiciv_derived.chemistry`
           union distinct
           select subject_id, hadm_id, charttime
-          from `physionet-data.mimic_derived.coagulation`
+          from `physionet-data.mimiciv_derived.coagulation`
           union distinct
           select subject_id, hadm_id, charttime
-          from `physionet-data.mimic_derived.complete_blood_count`
+          from `physionet-data.mimiciv_derived.complete_blood_count`
           union distinct
           select subject_id, hadm_id, charttime
-          from `physionet-data.mimic_derived.enzyme`
+          from `physionet-data.mimiciv_derived.enzyme`
       )
 
       , all_labs as (
           select times.*
-                  , bg.specimen, bg.specimen_pred, bg.specimen_prob, bg.so2, bg.po2, bg.pco2, bg.fio2_chartevents, bg.fio2, bg.aado2, bg.aado2_calc
+                  , bg.specimen, bg.so2, bg.po2, bg.pco2, bg.fio2_chartevents, bg.fio2, bg.aado2, bg.aado2_calc
                   , bg.pao2fio2ratio, bg.ph, bg.baseexcess, bg.bicarbonate as bicarbonate_bg, bg.totalco2, bg.hematocrit as hematocrit_bg, bg.hemoglobin as hemoglobin_bg, bg.carboxyhemoglobin
                   , bg.methemoglobin, bg.chloride as chloride_bg, bg.calcium as calcium_bg, bg.temperature, bg.potassium as potassium_bg, bg.sodium as sodium_bg
                   , bg.lactate, bg.glucose as glucose_bg
                   , blood.wbc, blood.basophils_abs, blood.eosinophils_abs, blood.lymphocytes_abs, blood.monocytes_abs, blood.neutrophils_abs
                   , blood.basophils, blood.eosinophils, blood.lymphocytes, blood.monocytes, blood.neutrophils, blood.atypical_lymphocytes, blood.bands
                   , blood.immature_granulocytes, blood.metamyelocytes, blood.nrbc
-                  , card.troponin_i, card.troponin_t--, card.ck_mb duplicated below
+                  , card.troponin_t--, card.ck_mb duplicated below
                   , enz.alt, enz.alp, enz.ast, enz.amylase, enz.bilirubin_total, enz.bilirubin_direct, enz.bilirubin_indirect, enz.ck_cpk, enz.ck_mb, enz.ggt, enz.ld_ldh
                   , chem.albumin, chem.globulin, chem.total_protein, chem.aniongap, chem.bicarbonate, chem.bun, chem.calcium, chem.chloride, chem.creatinine, chem.glucose
                   , chem.sodium, chem.potassium
@@ -58,25 +58,25 @@ def query_raw_mimiciv(project):
                   , cbc.hematocrit, cbc.hemoglobin, cbc.mch, cbc.mchc, cbc.mcv, cbc.platelet, cbc.rbc, cbc.rdw, cbc.rdwsd--, cbc.wbc, a subset of the previous wbc
 
           from times
-          left join `physionet-data.mimic_derived.bg` bg
+          left join `physionet-data.mimiciv_derived.bg` bg
           on times.subject_id = bg.subject_id
           and times.charttime = bg.charttime
-          left join `physionet-data.mimic_derived.blood_differential` blood
+          left join `physionet-data.mimiciv_derived.blood_differential` blood
           on times.subject_id = blood.subject_id
           and times.charttime = blood.charttime
-          left join `physionet-data.mimic_derived.cardiac_marker` card
+          left join `physionet-data.mimiciv_derived.cardiac_marker` card
           on times.subject_id = card.subject_id
           and times.charttime = card.charttime
-          left join `physionet-data.mimic_derived.chemistry` chem
+          left join `physionet-data.mimiciv_derived.chemistry` chem
           on times.subject_id = chem.subject_id
           and times.charttime = chem.charttime
-          left join `physionet-data.mimic_derived.coagulation` coag
+          left join `physionet-data.mimiciv_derived.coagulation` coag
           on times.subject_id = coag.subject_id
           and times.charttime = coag.charttime
-          left join `physionet-data.mimic_derived.complete_blood_count` cbc
+          left join `physionet-data.mimiciv_derived.complete_blood_count` cbc
           on times.subject_id = cbc.subject_id
           and times.charttime = cbc.charttime
-          left join `physionet-data.mimic_derived.enzyme` enz
+          left join `physionet-data.mimiciv_derived.enzyme` enz
           on times.subject_id = enz.subject_id
           and times.charttime = enz.charttime
           --where times.subject_id in (13978368, 15296256, 18771968)
@@ -87,7 +87,7 @@ def query_raw_mimiciv(project):
       , labs_icu as (
           select ic.stay_id, lab.*
           --from all_labs
-          from `physionet-data.mimic_icu.icustays` ic
+          from `physionet-data.mimiciv_icu.icustays` ic
           inner join all_labs lab
           on ic.subject_id = lab.subject_id
           and lab.charttime >= datetime_sub(ic.intime, interval '6' hour)
@@ -115,7 +115,7 @@ def query_raw_mimiciv(project):
             , MAX(CASE WHEN itemid = 224642 THEN value ELSE NULL END) AS temperature_site
             , AVG(case when itemid in (220277) and valuenum > 0 and valuenum <= 100 then valuenum else null end) as spo2
             , AVG(case when itemid in (225664,220621,226537) and valuenum > 0 then valuenum else null end) as glucose
-            FROM `physionet-data.mimic_icu.chartevents` ce
+            FROM `physionet-data.mimiciv_icu.chartevents` ce
             where ce.stay_id IS NOT NULL
             and ce.itemid in
             (
@@ -149,10 +149,10 @@ def query_raw_mimiciv(project):
 
       , times2 as (
           select subject_id, stay_id, charttime
-          from vitalsigns --`physionet-data.mimic_derived.vitalsign`
+          from vitalsigns --`physionet-data.mimiciv_derived.vitalsign`
           union distinct
           select subject_id, stay_id, charttime
-          from `physionet-data.mimic_derived.ventilator_setting`
+          from `physionet-data.mimiciv_derived.ventilator_setting`
       )
 
       , charts as (
@@ -164,7 +164,7 @@ def query_raw_mimiciv(project):
           left join vitalsigns vit
           on times2.stay_id = vit.stay_id
           and times2.charttime = vit.charttime
-          left join `physionet-data.mimic_derived.ventilator_setting` vent
+          left join `physionet-data.mimiciv_derived.ventilator_setting` vent
           on times2.stay_id = vent.stay_id
           and times2.charttime = vent.charttime
           order by times2.subject_id, times2.stay_id, times2.charttime
@@ -178,7 +178,7 @@ def query_raw_mimiciv(project):
           from labs_icu
           union distinct
           select subject_id, stay_id, charttime
-          from `physionet-data.mimic_derived.oxygen_delivery`
+          from `physionet-data.mimiciv_derived.oxygen_delivery`
       )
 
       , combined as (
@@ -187,14 +187,14 @@ def query_raw_mimiciv(project):
                   , charts.spo2, charts.glucose, charts.respiratory_rate_set, charts.respiratory_rate_total, charts.respiratory_rate_spontaneous, charts.minute_volume
                   , charts.tidal_volume_set, charts.tidal_volume_observed, charts.tidal_volume_spontaneous, charts.plateau_pressure, charts.peep, charts.fio2, charts.ventilator_mode
                   , charts.ventilator_mode_hamilton, charts.ventilator_type
-                  , labs.specimen, labs.specimen_pred, labs.specimen_prob, labs.so2, labs.po2, labs.pco2, labs.fio2 as fio2_labs, labs.aado2, labs.aado2_calc --labs.fio2_chartevents a repeat of charts.fio2
+                  , labs.specimen, labs.so2, labs.po2, labs.pco2, labs.fio2 as fio2_labs, labs.aado2, labs.aado2_calc --labs.fio2_chartevents a repeat of charts.fio2
                   , labs.pao2fio2ratio, labs.ph, labs.baseexcess, labs.bicarbonate_bg, labs.totalco2, labs.hematocrit_bg, labs.hemoglobin_bg, labs.carboxyhemoglobin
                   , labs.methemoglobin, labs.chloride_bg, labs.calcium_bg, labs.temperature as temperature_labs, labs.potassium_bg, labs.sodium_bg
                   , labs.lactate, labs.glucose_bg
                   , labs.wbc, labs.basophils_abs, labs.eosinophils_abs, labs.lymphocytes_abs, labs.monocytes_abs, labs.neutrophils_abs
                   , labs.basophils, labs.eosinophils, labs.lymphocytes, labs.monocytes, labs.neutrophils, labs.atypical_lymphocytes, labs.bands
                   , labs.immature_granulocytes, labs.metamyelocytes, labs.nrbc
-                  , labs.troponin_i, labs.troponin_t
+                  , labs.troponin_t
                   , labs.alt, labs.alp, labs.ast, labs.amylase, labs.bilirubin_total, labs.bilirubin_direct, labs.bilirubin_indirect, labs.ck_cpk, labs.ck_mb, labs.ggt, labs.ld_ldh
                   , labs.albumin, labs.globulin, labs.total_protein, labs.aniongap, labs.bicarbonate, labs.bun, labs.calcium, labs.chloride, labs.creatinine, labs.glucose as glucose_labs
                   , labs.sodium, labs.potassium
@@ -210,16 +210,16 @@ def query_raw_mimiciv(project):
           left join labs_icu labs
           on times3.stay_id = labs.stay_id
           and times3.charttime = labs.charttime
-          left join `physionet-data.mimic_derived.oxygen_delivery` o2
+          left join `physionet-data.mimiciv_derived.oxygen_delivery` o2
           on times3.stay_id = o2.stay_id
           and times3.charttime = o2.charttime
-          left join `physionet-data.mimic_derived.ventilation` vent
+          left join `physionet-data.mimiciv_derived.ventilation` vent
           on times3.stay_id = vent.stay_id
           and times3.charttime >= vent.starttime
           and times3.charttime < vent.endtime --or vent.starttime is null
       )
 
-      -- The following temp tables are for sepsis definition as we have in the previous paper. An alternative can be found in `physionet-data.mimic_derived.sepsis3`, they use absolute sofa rather than a change of 2.
+      -- The following temp tables are for sepsis definition as we have in the previous paper. An alternative can be found in `physionet-data.mimiciv_derived.sepsis3`, they use absolute sofa rather than a change of 2.
       -- Compared with MIMICIII, this may not do much to identify SOFA on the wards, this can be put on the to-do list.
 
       -- Note this query does not do much in the way of finding suspicion of infections before ICU admission, in that case the prescriptions table should be incorporated
@@ -242,8 +242,8 @@ def query_raw_mimiciv(project):
          , datetime_diff(lead(starttime) over (partition by stay_id order by stay_id, starttime), endtime, second)/3600 as next_antibio_time
          --, datetime_diff(lead(starttime) over (partition by stay_id order by stay_id, starttime), endtime, hour) as next_antibio_time
          , case when lead(starttime) over (partition by stay_id order by stay_id, starttime)  <= datetime_add(endtime, interval 96 hour) then 0 else 1 end as isolated_case
-         from `physionet-data.mimic_icu.inputevents` input
-      inner join `physionet-data.mimic_icu.d_items` d on input.itemid = d.itemid
+         from `physionet-data.mimiciv_icu.inputevents` input
+      inner join `physionet-data.mimiciv_icu.d_items` d on input.itemid = d.itemid
       where upper(d.category) like '%ANTIBIOTICS%'
       ) A
       order by subject_id, hadm_id, stay_id, starttime
@@ -271,7 +271,7 @@ def query_raw_mimiciv(project):
             , case when ab.isolated_case = 0 then ab.starttime else null end as antibiotic_time
             --, ab.isolated_case
             --, abx.endtime
-        from `physionet-data.mimic_icu.icustays` ie
+        from `physionet-data.mimiciv_icu.icustays` ie
         left join abx_partition_grouped ab
             on ie.hadm_id = ab.hadm_id and ie.stay_id = ab.stay_id
       )
@@ -283,7 +283,7 @@ def query_raw_mimiciv(project):
           , chartdate, charttime
           , spec_type_desc
           , max(case when org_name is not null and org_name != '' then 1 else 0 end) as PositiveCulture
-        from  `physionet-data.mimic_hosp.microbiologyevents`
+        from  `physionet-data.mimiciv_hosp.microbiologyevents`
         group by subject_id, hadm_id, chartdate, charttime, spec_type_desc
       )
 
@@ -339,8 +339,8 @@ def query_raw_mimiciv(project):
           sus.stay_id, hr, starttime, endtime, t_suspicion, sofa_24hours
           , first_value(sofa_24hours) over (partition by sofa.stay_id, t_suspicion order by sofa.stay_id, t_suspicion, starttime) as initial_sofa
           , sofa_24hours - first_value(sofa_24hours) over (partition by sofa.stay_id, t_suspicion order by sofa.stay_id, t_suspicion, starttime) as sofa_difference
-      from unique_times sus --`physionet-data.mimic_derived.suspicion_of_infection` sus
-      left join `physionet-data.mimic_derived.sofa` sofa
+      from unique_times sus --`physionet-data.mimiciv_derived.suspicion_of_infection` sus
+      left join `physionet-data.mimiciv_derived.sofa` sofa
           on sus.stay_id = sofa.stay_id
       -- the following is the largest interval suggested by the sepsis-3 paper, though their sensitivity analysis checked +-3 hours upwards
       where starttime <= datetime_add(t_suspicion, interval 24 hour)
@@ -370,7 +370,7 @@ def query_raw_mimiciv(project):
           , t_suspicion, t_sofa
           -- some papers may take the minimum to define sepsis time
           , least(t_suspicion, t_sofa) as t_sepsis_min
-        from `physionet-data.mimic_icu.icustays` ie
+        from `physionet-data.mimiciv_icu.icustays` ie
         left join first_event fe on ie.stay_id = fe.stay_id
         order by subject_id, intime
       )
@@ -378,14 +378,14 @@ def query_raw_mimiciv(project):
       , order_weight as (
           select * --stay_id, weight
           , ROW_NUMBER() OVER(PARTITION BY stay_id order by starttime) as rn
-          from `physionet-data.mimic_derived.weight_durations`
+          from `physionet-data.mimiciv_derived.weight_durations`
           where weight < 350 and weight > 25
 
       )
 
       , weight_height as (
           select od.stay_id, height, weight
-          from `physionet-data.mimic_derived.height` he
+          from `physionet-data.mimiciv_derived.height` he
           full outer join order_weight od
           on he.stay_id = od.stay_id
           where rn = 1
@@ -393,7 +393,7 @@ def query_raw_mimiciv(project):
 
       , icu_info as (
           select ic.*, wh.height, wh.weight, sep.t_suspicion, sep.t_sofa, sep.t_sepsis_min
-          from `physionet-data.mimic_derived.icustay_detail` ic
+          from `physionet-data.mimiciv_derived.icustay_detail` ic
           inner join sepsis_times sep
           on ic.stay_id = sep.stay_id
           left join weight_height wh
@@ -407,14 +407,14 @@ def query_raw_mimiciv(project):
                   , comb.spo2, comb.glucose, comb.respiratory_rate_set, comb.respiratory_rate_total, comb.respiratory_rate_spontaneous, comb.minute_volume
                   , comb.tidal_volume_set, comb.tidal_volume_observed, comb.tidal_volume_spontaneous, comb.plateau_pressure, comb.peep, comb.fio2, comb.ventilator_mode
                   , comb.ventilator_mode_hamilton, comb.ventilator_type
-                  , comb.specimen, comb.specimen_pred, comb.specimen_prob, comb.so2, comb.po2, comb.pco2, comb.fio2_labs, comb.aado2, comb.aado2_calc
+                  , comb.specimen, comb.so2, comb.po2, comb.pco2, comb.fio2_labs, comb.aado2, comb.aado2_calc
                   , comb.pao2fio2ratio, comb.ph, comb.baseexcess, comb.bicarbonate_bg, comb.totalco2, comb.hematocrit_bg, comb.hemoglobin_bg, comb.carboxyhemoglobin
                   , comb.methemoglobin, comb.chloride_bg, comb.calcium_bg, comb.temperature_labs, comb.potassium_bg, comb.sodium_bg
                   , comb.lactate, comb.glucose_bg
                   , comb.wbc, comb.basophils_abs, comb.eosinophils_abs, comb.lymphocytes_abs, comb.monocytes_abs, comb.neutrophils_abs
                   , comb.basophils, comb.eosinophils, comb.lymphocytes, comb.monocytes, comb.neutrophils, comb.atypical_lymphocytes, comb.bands
                   , comb.immature_granulocytes, comb.metamyelocytes, comb.nrbc
-                  , comb.troponin_i, comb.troponin_t
+                  , comb.troponin_t
                   , comb.alt, comb.alp, comb.ast, comb.amylase, comb.bilirubin_total, comb.bilirubin_direct, comb.bilirubin_indirect, comb.ck_cpk, comb.ck_mb, comb.ggt, comb.ld_ldh
                   , comb.albumin, comb.globulin, comb.total_protein, comb.aniongap, comb.bicarbonate, comb.bun, comb.calcium, comb.chloride, comb.creatinine, comb.glucose_labs
                   , comb.sodium, comb.potassium
